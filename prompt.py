@@ -12,8 +12,9 @@ if __name__ == "__main__":
         # "How do I blink an LED?",
         # "Show me how to read temperature from a BMP388 sensor",
         # "Please show me how to set up a rotary encoder knob to change a Neopixel thru the colors of the rainbow",
-        "Please show me how to setup multiple neopixel animations and change between them with the press of a button."
+        #"Please show me how to setup multiple neopixel animations and change between them with the press of a button."
         # "How to control a servo motor?",
+        "How do can I fetch the latest value from an AdafruitIO feed and show it on a built-in display with a custom font?"
         # "Setup I2C communication with a display"
     ]
 

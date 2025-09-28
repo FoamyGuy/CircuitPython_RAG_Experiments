@@ -10,6 +10,7 @@ Prompt Question → Vector Search → Relevant Code Examples → LLM + Context �
 Prompting a local model and using RAG requires several setup steps that must be done the first time. Subsequent prompts can load from cached files instead of doing the full process.
 
 ### Full Setup
+The full process from scratch.
 
 - Clone bundle and get submodules
 ```shell
@@ -31,6 +32,22 @@ python chunker.py
 python prompt.py
 ```
 
+
+### Use Cached Vector Database
+Save time by using the cached chunk vector database instead of building it.
+
+- Clone bundle and get submodules
+```shell
+git clone https://github.com/adafruit/Adafruit_CircuitPython_Bundle.git
+cd Adafruit_CircuitPython_Bundle/
+./update-submodules.sh
+```
+- No need to run `collector.py`, or `chunker.py`, just use `rag_ready_chunks.json` that is in the repo.
+- `CircuitPythonRAG` will load the vector database from `chroma_db/` in the repo instead of generating it.
+- Prompt the model - To issue a prompt to the model create an instance of `CircuitPythonRAG` and call the `query()` function on it passing in prompt as a string. The `prompt.py` script does this when executed. There is a list of questions in the script that will be used as prompts when executed.
+```shell
+python prompt.py
+```
 
 ## File Descriptions
 
