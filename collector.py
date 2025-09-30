@@ -108,8 +108,8 @@ class CircuitPythonCollector:
                 content = f.read()
 
             # Skip if too short or not actually CircuitPython
-            if len(content) < 100 or not self._is_circuitpython_code(content):
-                return
+            # if len(content) < 100 or not self._is_circuitpython_code(content):
+            #     return
 
             metadata = {
                 'source': str(file_path),
