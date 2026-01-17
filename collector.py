@@ -4,6 +4,7 @@ from pathlib import Path
 import time
 import toml
 
+from stubs_example_extractor_v1 import StubExampleExtractor
 
 def extract_first_package_or_module(toml_file_path):
     """
@@ -53,6 +54,7 @@ class CircuitPythonCollector:
     def __init__(self, output_dir="circuitpython_data"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
+        self.stub_extractor = StubExampleExtractor(output_dir)  # Share output dir
 
     def collect_official_libraries(self):
         """Collect from official Adafruit libraries"""
@@ -88,6 +90,19 @@ class CircuitPythonCollector:
                 lib_name = extract_first_package_or_module(str(local_repo_path / "pyproject.toml"))
                 # Extract examples
                 self._extract_examples(local_repo_path, lib)
+
+    def process_stubs(self, stubs_dir="circuitpython/circuitpython-stubs"):
+        """Process all stub files to extract examples"""
+        stubs_path = Path(stubs_dir)
+
+        for stub_file in stubs_path.glob("**/*.pyi"):
+            # Get library name from directory structure
+            library_name = stub_file.parent.name
+            if library_name == "circuitpython-stubs":
+                library_name = stub_file.stem
+
+            print(f"Processing stub: {stub_file}")
+            self.stub_extractor.process_stub_file(stub_file, library_name)
 
     def _extract_examples(self, repo_path, library_name):
         """Extract code examples from a repository"""
@@ -138,6 +153,7 @@ class CircuitPythonCollector:
         circuitpython_indicators = [
             'import board',
             'import digitalio',
+            'import displayio',
             'import analogio',
             'import busio',
             'import microcontroller',
@@ -176,3 +192,4 @@ class CircuitPythonCollector:
 if __name__ == '__main__':
     collector = CircuitPythonCollector()
     collector.process_libs()
+    collector.process_stubs()

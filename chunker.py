@@ -8,8 +8,8 @@ class CircuitPythonChunker:
     def __init__(self):
         self.chunk_size_limit = 1000  # tokens
 
-    def chunk_python_file(self, file_content, metadata):
-        """Chunk Python file intelligently"""
+    def chunk_python_file(self, file_content, metadata, docstring_content=None):
+        """Chunk Python file intelligently, optionally including docstring context"""
         chunks = []
 
         try:
@@ -18,10 +18,25 @@ class CircuitPythonChunker:
             # Extract imports (always include these)
             imports = self._extract_imports(tree)
 
+            # If we have a docstring, create a documentation chunk
+            if docstring_content:
+                doc_chunk = self._create_documentation_chunk(
+                    docstring_content,
+                    imports,
+                    metadata
+                )
+                if doc_chunk:
+                    chunks.append(doc_chunk)
+
             # Process each top-level element
             for node in tree.body:
                 if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-                    chunk = self._create_function_chunk(node, file_content, imports)
+                    chunk = self._create_function_chunk(
+                        node,
+                        file_content,
+                        imports,
+                        docstring_content  # Pass docstring for context
+                    )
                     if chunk:
                         chunks.append({
                             'content': chunk,
@@ -44,21 +59,49 @@ class CircuitPythonChunker:
                             }
                         })
 
-            # If file is short enough, also include as whole file
+            # If file is short enough, also include as whole file with docstring
             if len(file_content) < self.chunk_size_limit:
+                complete_content = file_content
+
+                # Prepend docstring context if available
+                if docstring_content:
+                    complete_content = (
+                        f"# Documentation:\n"
+                        f"# {docstring_content.replace(chr(10), chr(10) + '# ')}\n\n"
+                        f"{file_content}"
+                    )
+
                 chunks.append({
-                    'content': file_content,
+                    'content': complete_content,
                     'metadata': {
                         **metadata,
-                        'chunk_type': 'complete_example'
+                        'chunk_type': 'complete_example',
+                        'includes_documentation': bool(docstring_content)
                     }
                 })
 
         except SyntaxError:
             # If can't parse, fall back to simple chunking
-            chunks = self._simple_chunk(file_content, metadata)
+            chunks = self._simple_chunk(file_content, metadata, docstring_content)
 
         return chunks
+
+    def _create_documentation_chunk(self, docstring_content, imports, metadata):
+        """Create a standalone documentation chunk"""
+        # Format the docstring as a readable chunk
+        doc_chunk = f"# Documentation\n\n{docstring_content}\n\n"
+
+        # Add imports for context
+        if imports:
+            doc_chunk += "# Related imports:\n" + "\n".join(f"# {imp}" for imp in imports)
+
+        return {
+            'content': doc_chunk,
+            'metadata': {
+                **metadata,
+                'chunk_type': 'documentation'
+            }
+        }
 
     def _extract_imports(self, tree):
         """Extract all import statements"""
@@ -68,17 +111,24 @@ class CircuitPythonChunker:
                 imports.append(ast.unparse(node))
         return imports
 
-    def _create_function_chunk(self, func_node, file_content, imports):
+    def _create_function_chunk(self, func_node, file_content, imports, docstring_content=None):
         """Create a chunk for a function with context"""
         func_code = ast.unparse(func_node)
 
-        # Add docstring context if available
+        # Add function docstring if available
         description = ""
         if (ast.get_docstring(func_node)):
             description = f"# {ast.get_docstring(func_node)}\n"
 
-        # Combine imports + description + function
-        chunk = "\n".join(imports) + "\n\n" + description + func_code
+        # Optionally add broader context from module docstring
+        context_note = ""
+        if docstring_content:
+            # Extract first line or first paragraph as context
+            first_para = docstring_content.split('\n\n')[0]
+            context_note = f"# Context: {first_para}\n\n"
+
+        # Combine imports + context + description + function
+        chunk = "\n".join(imports) + "\n\n" + context_note + description + func_code
 
         # Add usage example if found in comments
         usage_example = self._find_usage_example(func_node.name, file_content)
@@ -163,11 +213,21 @@ class CircuitPythonChunker:
                 return '\n'.join(lines[start:end])
         return None
 
-    def _simple_chunk(self, file_content, metadata):
+    def _simple_chunk(self, file_content, metadata, docstring_content=None):
         """Fallback chunking when AST parsing fails"""
         # Split by blank lines or logical breaks
         sections = re.split(r'\n\s*\n', file_content)
         chunks = []
+
+        # If we have docstring, add it as first chunk
+        if docstring_content:
+            chunks.append({
+                'content': f"# Documentation\n\n{docstring_content}",
+                'metadata': {
+                    **metadata,
+                    'chunk_type': 'documentation'
+                }
+            })
 
         current_chunk = ""
         for section in sections:
@@ -211,8 +271,16 @@ if __name__ == '__main__':
         with open(f"{py_file}.meta", 'r') as f:
             metadata = json.load(f)
 
-        # Chunk the content
-        chunks = chunker.chunk_python_file(content, metadata)
+        # Check if there's a corresponding docstring file
+        docstring_file = py_file.with_suffix('.docstring.txt')
+        docstring_content = None
+        if docstring_file.exists():
+            with open(docstring_file, 'r') as f:
+                docstring_content = f.read()
+            print(f"Found docstring for {py_file.name}")
+
+        # Chunk the content (with optional docstring)
+        chunks = chunker.chunk_python_file(content, metadata, docstring_content)
         processed_chunks.extend(chunks)
 
     # Save processed chunks for RAG system

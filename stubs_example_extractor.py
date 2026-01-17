@@ -52,7 +52,7 @@ class StubExampleExtractor:
                             'content': code,
                             'metadata': {
                                 **metadata,
-                                'type': 'extracted_example',
+                                'type': 'extracted_core_module_stubs',
                                 'source_type': 'stub_docstring',
                                 'extraction_method': pattern_name,
                                 'context': context,
@@ -192,6 +192,9 @@ class StubExampleExtractor:
 
         # Extract examples
         examples = self.extract_examples_from_stub(content, base_metadata)
+
+
+
 
         return examples
 

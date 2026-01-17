@@ -150,6 +150,10 @@ Question: {question}
 
 Provide a specific CircuitPython solution with explanations:"""
 
+
+        print("Full prompt: ")
+        print(prompt)
+
         response = ollama.chat(model=model, messages=[{
             'role': 'user',
             'content': prompt
